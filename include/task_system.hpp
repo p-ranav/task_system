@@ -1,8 +1,8 @@
 #pragma once
-#include <vector>
-#include <thread>
 #include <atomic>
 #include <notification_queue.hpp>
+#include <thread>
+#include <vector>
 
 class task_system {
   const unsigned _count{std::thread::hardware_concurrency()};
@@ -11,12 +11,14 @@ class task_system {
   std::atomic<unsigned> _index{0};
 
   void run(unsigned i) {
-    while(true) {
+    while (true) {
       std::function<void()> f;
       for (unsigned n = 0; n != _count; ++n) {
-	if (_q[(i + n) % _count].try_pop(f)) break;
-      }      
-      if (!f && !_q[i].try_pop(f)) break;
+        if (_q[(i + n) % _count].try_pop(f))
+          break;
+      }
+      if (!f && !_q[i].try_pop(f))
+        break;
       f();
     }
   }
@@ -29,18 +31,20 @@ public:
   }
 
   ~task_system() {
-    for (auto& e: _q) e.done();
-    for (auto& e: _threads) e.join();
+    for (auto &e : _q)
+      e.done();
+    for (auto &e : _threads)
+      e.join();
   }
 
-  template <typename F>
-  void async_(F&& f) {
+  template <typename F> void async_(F &&f) {
     auto i = _index++;
 
     for (unsigned n = 0; n != _count; ++n) {
-      if (_q[(i + n) % _count].try_push(std::forward<F>(f))) return;
+      if (_q[(i + n) % _count].try_push(std::forward<F>(f)))
+        return;
     }
-    
+
     _q[i % _count].try_push(std::forward<F>(f));
   }
 };
