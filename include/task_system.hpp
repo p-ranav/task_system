@@ -39,12 +39,10 @@ public:
 
   template <typename F> void async_(F &&f) {
     auto i = _index++;
-
     for (unsigned n = 0; n != _count; ++n) {
       if (_q[(i + n) % _count].try_push(std::forward<F>(f)))
         return;
     }
-
     _q[i % _count].try_push(std::forward<F>(f));
   }
 };
