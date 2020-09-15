@@ -1,6 +1,6 @@
 # Better Code: Concurrency - Sean Parent
 
-Task System presented in "Better Code: Concurrency - Sean Parent" at NDC London, 2017
+An efficient implementation of the task system presented in "Better Code: Concurrency - Sean Parent" at NDC London, 2017
 
 * **Video**: https://www.youtube.com/watch?v=zULU6Hhp42w
 * **Presentation**: https://sean-parent.stlab.cc/presentations/2016-08-08-concurrency/2016-08-08-concurrency.pdf
