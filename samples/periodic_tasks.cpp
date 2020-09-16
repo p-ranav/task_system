@@ -1,9 +1,8 @@
-#include <task_system/scheduler.hpp>
+#include <task_system/task_system.hpp>
 #include <iostream>
-using namespace task_system;
 
 int main() {
-  scheduler s;
+  task_system s;
 
   auto timer_a = std::thread([&s]() {
     while (true) {
