@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <deque>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -54,33 +55,26 @@ class task_system {
   std::atomic_bool running_{false};  // Is the scheduler running?
   std::mutex mutex_;                 // Mutex to protect `enqueued_`
   std::condition_variable ready_;    // Signal to notify task enqueued
-  std::atomic_bool enqueued_{false}; // Set to true when a task is scheduled
+  std::atomic_size_t enqueued_{0}; // Incremented when a task is scheduled
 
   void run(unsigned i) {
-    while (running_) {
+    while (true) {
       // Wait for the `enqueued` signal
       {
         lock_t lock{mutex_};
-        ready_.wait(lock, [this] { return enqueued_.load() || !running_; });
-        enqueued_ = false;
+        // std::cout << "Waiting\n";
+        ready_.wait(lock, [this] { return enqueued_.load() > 0 || !running_; });
+        if (enqueued_ > 0)
+          enqueued_ -= 1;
+        // std::cout << "Done waiting\n";
       }
-
-      if (!running_) {
-        break;
-      }
-
-      task t;
-
       // dequeue task
-      bool dequeued = false;
-      do {
-        for (unsigned n = 0; n != count_; ++n) {
-          if (queues_[(i + n) % count_].try_pop(t)) {
-            dequeued = true;
-            break;
-          }
-        }
-      } while (!dequeued && running_);
+      task t;
+      for (unsigned n = 0; n != count_; ++n)
+        if (queues_[(i + n) % count_].try_pop(t))
+          break;
+
+      if (!t && !queues_[i].try_pop(t)) continue;
 
       // execute task
       t();
@@ -97,7 +91,6 @@ public:
   }
 
   ~task_system() {
-    running_ = false;
     for (auto &q : queues_)
       q.done();
     for (auto &t : threads_)
@@ -106,22 +99,22 @@ public:
   }
 
   template <typename T> void schedule(T &&task) {
+    // std::cout << "Scheduling [";
     auto i = index_++;
+    // std::cout << i << "]\n";
 
-    // Enqueue task
-
-    while (running_ && !enqueued_) {
-      for (unsigned n = 0; n != count_; ++n) {
-        if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
-          // Send `enqueued` signal to worker threads
-          {
-            lock_t lock{mutex_};
-            enqueued_ = true;
-            ready_.notify_one();
-          }
-          break;
-        }
+    for (unsigned n = 0; n != count_; ++n) {
+      if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
+        lock_t lock{mutex_};
+        enqueued_ += 1;
+        ready_.notify_one();
+        return;
       }
     }
+
+    queues_[i % count_].try_push(std::forward<T>(task));
+    lock_t lock{mutex_};
+    enqueued_ += 1;
+    ready_.notify_one();
   }
 };
