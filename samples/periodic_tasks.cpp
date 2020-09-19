@@ -2,7 +2,7 @@
 #include <iostream>
 
 int main() {
-  task_system s;
+  ts::task_system s;
 
   auto timer_a = std::thread([&s]() {
     while (true) {

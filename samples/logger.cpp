@@ -7,7 +7,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 
 int main() {
-  task_system s(1);
+  ts::task_system s(1);
 
   auto async_file = spdlog::basic_logger_mt<spdlog::async_factory>("async_file_logger", "foo.log");
   auto log = [&async_file](size_t i) {

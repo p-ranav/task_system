@@ -2,7 +2,7 @@
 #include <iostream>
 
 int main() {
-  task_system s(2);
+  ts::task_system s(2);
 
   s.schedule([]() { std::cout << "TaskA\n"; });
   s.schedule([]() { std::cout << "TaskB\n"; });

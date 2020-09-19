@@ -8,6 +8,8 @@
 #include <thread>
 #include <vector>
 
+namespace ts {
+
 template <typename T>
 class concurrent_queue {
   std::deque<T> queue_;
@@ -124,3 +126,5 @@ public:
   }
 
 };
+
+}
