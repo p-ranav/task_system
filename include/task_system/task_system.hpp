@@ -51,33 +51,37 @@ class task_system {
   const unsigned count_;
   std::vector<std::thread> threads_;
   std::vector<notification_queue> queues_{count_};
-  std::atomic<unsigned> index_{0};
-  std::atomic_bool running_{false};  // Is the scheduler running?
+  std::atomic_size_t index_{0};
+  std::atomic_bool running_{false};
   std::mutex mutex_;                 // Mutex to protect `enqueued_`
   std::condition_variable ready_;    // Signal to notify task enqueued
-  std::atomic_size_t enqueued_{0}; // Incremented when a task is scheduled
+  std::atomic_size_t enqueued_{0};   // Incremented when a task is scheduled
 
   void run(unsigned i) {
-    while (true) {
+    while (running_ || enqueued_ > 0) {
       // Wait for the `enqueued` signal
       {
         lock_t lock{mutex_};
-        // std::cout << "Waiting\n";
-        ready_.wait(lock, [this] { return enqueued_.load() > 0 || !running_; });
-        if (enqueued_ > 0)
-          enqueued_ -= 1;
-        // std::cout << "Done waiting\n";
+        ready_.wait(lock, [this] { return enqueued_ > 0 || !running_; });
       }
+
+      if (enqueued_ > 0)
+        enqueued_ -= 1;
+
       // dequeue task
       task t;
-      for (unsigned n = 0; n != count_; ++n)
-        if (queues_[(i + n) % count_].try_pop(t))
-          break;
+      bool dequeued{false};
 
-      if (!t && !queues_[i].try_pop(t)) continue;
-
-      // execute task
-      t();
+      while(!dequeued) {
+        for (unsigned n = 0; n != count_; ++n) {
+          if (queues_[(i + n) % count_].try_pop(t)) {
+            dequeued = true;
+            // execute task
+            t();
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -91,30 +95,27 @@ public:
   }
 
   ~task_system() {
-    for (auto &q : queues_)
+    running_ = false;
+    for (auto &q : queues_) {
       q.done();
-    for (auto &t : threads_)
-      if (t.joinable())
+    }
+    for (auto &t : threads_) {
+      if (t.joinable()) {
         t.join();
+      }
+    }
   }
 
   template <typename T> void schedule(T &&task) {
-    // std::cout << "Scheduling [";
     auto i = index_++;
-    // std::cout << i << "]\n";
-
-    for (unsigned n = 0; n != count_; ++n) {
-      if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
-        lock_t lock{mutex_};
-        enqueued_ += 1;
-        ready_.notify_one();
-        return;
+    while (true) {
+      for (unsigned n = 0; n != count_; ++n) {
+        if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
+          enqueued_ += 1;
+          ready_.notify_one();
+          return;
+        }
       }
     }
-
-    queues_[i % count_].try_push(std::forward<T>(task));
-    lock_t lock{mutex_};
-    enqueued_ += 1;
-    ready_.notify_one();
   }
 };
