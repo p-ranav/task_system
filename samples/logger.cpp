@@ -12,7 +12,7 @@ int main() {
   auto async_file = spdlog::basic_logger_mt<spdlog::async_factory>("async_file_logger", "foo.log");
 
   auto log = [&async_file](size_t i) {
-    async_file->info("Hello World {}", i);
+    async_file->info("{}", i);
   };
 
   auto writer1 = std::thread([&] {

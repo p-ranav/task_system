@@ -13,9 +13,7 @@ using task = std::function<void()>;
 
 class notification_queue {
   std::deque<task> queue_;
-  bool done_{false};
   std::mutex mutex_;
-  std::condition_variable ready_;
 
 public:
   template <typename T> bool try_push(T &&task) {
@@ -25,7 +23,6 @@ public:
         return false;
       queue_.emplace_back(std::forward<T>(task));
     }
-    ready_.notify_one();
     return true;
   }
 
@@ -36,14 +33,6 @@ public:
     task = std::move(queue_.front());
     queue_.pop_front();
     return true;
-  }
-
-  void done() {
-    {
-      lock_t lock{mutex_};
-      done_ = true;
-    }
-    ready_.notify_all();
   }
 };
 
@@ -98,9 +87,6 @@ public:
   ~task_system() {
     running_ = false;
     ready_.notify_all();
-    for (auto &q : queues_) {
-      q.done();
-    }
     for (auto &t : threads_) {
       if (t.joinable()) {
         t.join();
