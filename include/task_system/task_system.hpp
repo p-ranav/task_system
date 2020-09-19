@@ -8,38 +8,37 @@
 #include <thread>
 #include <vector>
 
-using lock_t = std::unique_lock<std::mutex>;
-using task = std::function<void()>;
-
-class notification_queue {
-  std::deque<task> queue_;
+template <typename T>
+class concurrent_queue {
+  std::deque<T> queue_;
   std::mutex mutex_;
 
 public:
-  template <typename T> bool try_push(T &&task) {
+  bool try_push(T &&item) {
     {
-      lock_t lock{mutex_, std::try_to_lock};
+      std::unique_lock<std::mutex> lock{mutex_, std::try_to_lock};
       if (!lock)
         return false;
-      queue_.emplace_back(std::forward<T>(task));
+      queue_.emplace_back(std::forward<T>(item));
     }
     return true;
   }
 
-  bool try_pop(task &task) {
-    lock_t lock{mutex_, std::try_to_lock};
+  bool try_pop(T &item) {
+    std::unique_lock<std::mutex> lock{mutex_, std::try_to_lock};
     if (!lock || queue_.empty())
       return false;
-    task = std::move(queue_.front());
+    item = std::move(queue_.front());
     queue_.pop_front();
     return true;
   }
 };
 
+template <class Task = std::function<void()>>
 class task_system {
   const unsigned count_;
   std::vector<std::thread> threads_;
-  std::vector<notification_queue> queues_{count_};
+  std::vector<concurrent_queue<Task>> queues_{count_};
   std::atomic_size_t index_{0};
   std::atomic_bool running_{false};
   std::mutex mutex_;               // Mutex to protect `enqueued_`
@@ -50,12 +49,12 @@ class task_system {
     while (running_ || enqueued_ > 0) {
       // Wait for the `enqueued` signal
       {
-        lock_t lock{mutex_};
+        std::unique_lock<std::mutex> lock{mutex_};
         ready_.wait(lock, [this] { return enqueued_ > 0 || !running_; });
       }
 
       // dequeue task
-      task t;
+      Task t;
       bool dequeued{false};
 
       while (!dequeued) {
@@ -94,16 +93,16 @@ public:
     }
   }
 
-  template <typename T> bool try_schedule(T &&task) {
+  template <typename T> bool try_schedule(T &&t) {
     auto i = index_++;
     for (unsigned n = 0; n != count_; ++n) {
-      if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
+      if (queues_[(i + n) % count_].try_push(std::forward<T>(t))) {
         enqueued_ += 1;
         ready_.notify_one();
         return true;
       }
     }
-    if (queues_[i % count_].try_push(std::forward<T>(task))) {
+    if (queues_[i % count_].try_push(std::forward<T>(t))) {
       enqueued_ += 1;
       ready_.notify_one();
       return true;
@@ -113,8 +112,8 @@ public:
     }
   }
 
-  template <typename T> void schedule(T &&task) {
-    while (!try_schedule(task)) {}
+  template <typename T> void schedule(T &&t) {
+    while (!try_schedule(t)) {}
   }
 
 };
