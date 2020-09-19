@@ -1,6 +1,16 @@
-# Better Code: Concurrency - Sean Parent
+# task_system
 
-An efficient implementation of the task system presented in "Better Code: Concurrency - Sean Parent" at NDC London, 2017
+`task_system` is a lightweight library that provides a task scheduler for modern C++.
+
+* The `task_system` scheduler manages an array of concurrent queues
+* A task, when scheduled, is enqueued onto one of queues
+* A pool of threads executes ready tasks
+
+<p align="center">
+  <img src="img/design.png"/>  
+</p>
+
+### Reference
 
 * **Video**: https://www.youtube.com/watch?v=zULU6Hhp42w
 * **Presentation**: https://sean-parent.stlab.cc/presentations/2016-08-08-concurrency/2016-08-08-concurrency.pdf
