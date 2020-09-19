@@ -65,9 +65,6 @@ class task_system {
         ready_.wait(lock, [this] { return enqueued_ > 0 || !running_; });
       }
 
-      if (enqueued_ > 0)
-        enqueued_ -= 1;
-
       // dequeue task
       task t;
       bool dequeued{false};
@@ -76,11 +73,15 @@ class task_system {
         for (unsigned n = 0; n != count_; ++n) {
           if (queues_[(i + n) % count_].try_pop(t)) {
             dequeued = true;
+            if (enqueued_ > 0)
+              enqueued_ -= 1;
             // execute task
             t();
             break;
           }
         }
+        if (!(running_ || enqueued_ > 0))
+          break;
       }
     }
   }
@@ -96,6 +97,7 @@ public:
 
   ~task_system() {
     running_ = false;
+    ready_.notify_all();
     for (auto &q : queues_) {
       q.done();
     }
