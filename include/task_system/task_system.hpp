@@ -108,25 +108,7 @@ public:
     }
   }
 
-  template <typename T> void schedule(T &&task) {
-    auto i = index_++;
-    while (true) {
-      for (unsigned n = 0; n != count_; ++n) {
-        if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
-          enqueued_ += 1;
-          ready_.notify_one();
-          return;
-        }
-      }
-      if (queues_[i % _count].try_push(std::forward<T>(task))) {
-        enqueued_ += 1;
-        ready_.notify_one();
-        return; 
-      }
-    }
-  }
-
-  template <typename T> void try_schedule(T &&task) {
+  template <typename T> bool try_schedule(T &&task) {
     auto i = index_++;
     for (unsigned n = 0; n != count_; ++n) {
       if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
@@ -135,7 +117,18 @@ public:
         return true;
       }
     }
-    return queues_[i % _count].try_push(std::forward<T>(task));
+    if (queues_[i % count_].try_push(std::forward<T>(task))) {
+      enqueued_ += 1;
+      ready_.notify_one();
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  template <typename T> void schedule(T &&task) {
+    while (!try_schedule(task)) {}
   }
 
 };

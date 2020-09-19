@@ -16,19 +16,19 @@ int main() {
   };
 
   auto writer1 = std::thread([&] {
-    for (auto i = 0; i < 50000; i++) {
+    for (auto i = 0; i < 333333; i++) {
       s.schedule(std::bind(log, i));
     }
   });
 
   auto writer2 = std::thread([&] {
-    for (auto i = 50000; i < 100000; i++) {
+    for (auto i = 333333; i < 666666; i++) {
       s.schedule(std::bind(log, i));
     }
   });
 
   auto writer3 = std::thread([&] {
-    for (auto i = 100000; i < 200000; i++) {
+    for (auto i = 666666; i < 1000001; i++) {
       s.schedule(std::bind(log, i));
     }
   });
