@@ -4,7 +4,7 @@
 
 * The `task_system` scheduler manages an array of concurrent queues
 * A task, when scheduled, is enqueued onto one of queues
-* A pool of threads executes ready tasks
+* A pool of threads executes ready tasks, potentially stealing tasks for each other's queues
 
 <p align="center">
   <img src="img/design.png"/>  
