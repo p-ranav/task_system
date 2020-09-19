@@ -118,6 +118,24 @@ public:
           return;
         }
       }
+      if (queues_[i % _count].try_push(std::forward<T>(task))) {
+        enqueued_ += 1;
+        ready_.notify_one();
+        return; 
+      }
     }
   }
+
+  template <typename T> void try_schedule(T &&task) {
+    auto i = index_++;
+    for (unsigned n = 0; n != count_; ++n) {
+      if (queues_[(i + n) % count_].try_push(std::forward<T>(task))) {
+        enqueued_ += 1;
+        ready_.notify_one();
+        return true;
+      }
+    }
+    return queues_[i % _count].try_push(std::forward<T>(task));
+  }
+
 };
