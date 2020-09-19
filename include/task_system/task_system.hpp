@@ -34,11 +34,11 @@ public:
   }
 };
 
-template <class Task = std::function<void()>>
 class task_system {
+  using task = std::function<void()>;
   const unsigned count_;
   std::vector<std::thread> threads_;
-  std::vector<concurrent_queue<Task>> queues_{count_};
+  std::vector<concurrent_queue<task>> queues_{count_};
   std::atomic_size_t index_{0};
   std::atomic_bool running_{false};
   std::mutex mutex_;               // Mutex to protect `enqueued_`
@@ -54,7 +54,7 @@ class task_system {
       }
 
       // dequeue task
-      Task t;
+      task t;
       bool dequeued{false};
 
       while (!dequeued) {
@@ -67,6 +67,13 @@ class task_system {
             t();
             break;
           }
+        }
+        if (!t && queues_[i].try_pop(t)) {
+          dequeued = true;
+          if (enqueued_ > 0)
+            enqueued_ -= 1;
+          // execute task
+          t();
         }
         if (!(running_ || enqueued_ > 0))
           break;
