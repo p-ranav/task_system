@@ -53,9 +53,9 @@ class task_system {
   std::vector<notification_queue> queues_{count_};
   std::atomic_size_t index_{0};
   std::atomic_bool running_{false};
-  std::mutex mutex_;                 // Mutex to protect `enqueued_`
-  std::condition_variable ready_;    // Signal to notify task enqueued
-  std::atomic_size_t enqueued_{0};   // Incremented when a task is scheduled
+  std::mutex mutex_;               // Mutex to protect `enqueued_`
+  std::condition_variable ready_;  // Signal to notify task enqueued
+  std::atomic_size_t enqueued_{0}; // Incremented when a task is scheduled
 
   void run(unsigned i) {
     while (running_ || enqueued_ > 0) {
@@ -69,7 +69,7 @@ class task_system {
       task t;
       bool dequeued{false};
 
-      while(!dequeued) {
+      while (!dequeued) {
         for (unsigned n = 0; n != count_; ++n) {
           if (queues_[(i + n) % count_].try_pop(t)) {
             dequeued = true;
