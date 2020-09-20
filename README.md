@@ -1,6 +1,6 @@
 # task_system
 
-`task_system` is a lightweight library that provides a task scheduler for modern C++.
+`task_system` provides a task scheduler for modern C++.
 
 * The `task_system` scheduler manages an array of concurrent queues
 * A task, when scheduled, is enqueued onto one of queues
